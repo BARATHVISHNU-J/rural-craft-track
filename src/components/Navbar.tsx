@@ -49,12 +49,14 @@ export const Navbar = () => {
             >
               {t('orders')}
             </Link>
-            <Link 
-              to="/leaders" 
-              className="text-foreground hover:text-primary transition-colors"
-            >
-              {t('leaders')}
-            </Link>
+            {user.role === 'admin' && (
+              <Link 
+                to="/leaders" 
+                className="text-foreground hover:text-primary transition-colors"
+              >
+                {t('leaders')}
+              </Link>
+            )}
             <Link 
               to={user.role === 'leader' ? '/leader-dashboard' : '/admin-dashboard'} 
               className="text-foreground hover:text-primary transition-colors"
@@ -128,12 +130,14 @@ export const Navbar = () => {
             >
               {t('orders')}
             </Link>
-            <Link 
-              to="/leaders" 
-              className="text-sm text-foreground hover:text-primary transition-colors"
-            >
-              {t('leaders')}
-            </Link>
+            {user.role === 'admin' && (
+              <Link 
+                to="/leaders" 
+                className="text-sm text-foreground hover:text-primary transition-colors"
+              >
+                {t('leaders')}
+              </Link>
+            )}
             <Link 
               to={user.role === 'leader' ? '/leader-dashboard' : '/admin-dashboard'} 
               className="text-sm text-foreground hover:text-primary transition-colors"

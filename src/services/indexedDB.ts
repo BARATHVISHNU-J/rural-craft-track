@@ -16,7 +16,7 @@ interface Order {
   numberOfProducts: number;
   deadline: string;
   leaderId: string;
-  status: 'active' | 'pending';
+  status: 'active' | 'pending' | 'dispatched';
   createdAt: string;
 }
 

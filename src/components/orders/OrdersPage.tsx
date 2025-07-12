@@ -6,12 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Filter, Calendar, Package, User } from 'lucide-react';
+import { Plus, Filter, Calendar, Package, User, CheckCircle, Clock } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { dbService, Order } from '@/services/indexedDB';
+import { OrderTracking } from './OrderTracking';
 import { toast } from 'sonner';
 
 export const OrdersPage = () => {
+  const { user } = useAuth();
   const { t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
@@ -21,6 +24,8 @@ export const OrdersPage = () => {
     type: 'all',
     deadline: ''
   });
+  const [orderProgress, setOrderProgress] = useState<{[key: string]: {design: boolean, assembly: boolean, painting: boolean, stitching: boolean, finishing: boolean, cutting: boolean}}>({});
+  const [selectedOrderForTracking, setSelectedOrderForTracking] = useState<string | null>(null);
 
   // Mock data initialization
   useEffect(() => {
@@ -126,10 +131,32 @@ export const OrdersPage = () => {
     }
   };
 
+  const handleUpdateProgress = (orderId: string, progress: any) => {
+    // Update progress in local state or database
+    console.log('Updating progress for order:', orderId, progress);
+  };
+
+  const handleDispatchOrder = async (orderId: string) => {
+    try {
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        const updatedOrder: Order = { ...order, status: 'dispatched' };
+        const updatedOrders = orders.map(o => o.id === orderId ? updatedOrder : o);
+        await dbService.saveOrders(updatedOrders);
+        setOrders(updatedOrders);
+        setSelectedOrderForTracking(null);
+        toast.success('Order dispatched successfully!');
+      }
+    } catch (error) {
+      toast.error('Failed to dispatch order');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'dispatched': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
   };
@@ -157,13 +184,14 @@ export const OrdersPage = () => {
             </p>
           </div>
 
-          <Dialog open={isAddOrderOpen} onOpenChange={setIsAddOrderOpen}>
-            <DialogTrigger asChild>
-              <Button className="mt-4 sm:mt-0">
-                <Plus className="h-4 w-4 mr-2" />
-                {t('addNewOrder')}
-              </Button>
-            </DialogTrigger>
+          {user?.role === 'admin' && (
+            <Dialog open={isAddOrderOpen} onOpenChange={setIsAddOrderOpen}>
+              <DialogTrigger asChild>
+                <Button className="mt-4 sm:mt-0">
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t('addNewOrder')}
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>{t('addNewOrder')}</DialogTitle>
@@ -231,6 +259,7 @@ export const OrdersPage = () => {
               </div>
             </DialogContent>
           </Dialog>
+          )}
         </div>
 
         {/* Filters */}
@@ -327,6 +356,20 @@ export const OrdersPage = () => {
                       Created: {new Date(order.createdAt).toLocaleDateString()}
                     </span>
                   </div>
+                  
+                  {/* Track Order Button for Leaders */}
+                  {user?.role === 'leader' && order.leaderId === user.id && order.status !== 'dispatched' && (
+                    <div className="pt-3 border-t">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => setSelectedOrderForTracking(order.id)}
+                        className="w-full"
+                      >
+                        Track Order Progress
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -342,6 +385,36 @@ export const OrdersPage = () => {
             <p className="text-muted-foreground">
               Try adjusting your filters or add a new order
             </p>
+          </div>
+        )}
+
+        {/* Order Tracking Modal */}
+        {selectedOrderForTracking && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-background rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-4 border-b flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Order Tracking</h2>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setSelectedOrderForTracking(null)}
+                >
+                  ×
+                </Button>
+              </div>
+              <div className="p-4">
+                {orders
+                  .filter(order => order.id === selectedOrderForTracking)
+                  .map(order => (
+                    <OrderTracking
+                      key={order.id}
+                      order={order}
+                      onUpdateProgress={handleUpdateProgress}
+                      onDispatchOrder={handleDispatchOrder}
+                    />
+                  ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
